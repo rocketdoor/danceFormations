@@ -1,0 +1,31 @@
+/*MY ACTUAL USED CSS THINGS*/
+
+
+.tool-button{
+  width: 48px;
+  height: 48px
+}
+
+.button-row{
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.side-panel{
+  width: 280px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center
+}
+
+.side-spacer{
+  width: 280px;
+}
+
+.stage-wrapper{
+  display: flex;
+  flex-direction: row;
+}

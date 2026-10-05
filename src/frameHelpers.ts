@@ -1,4 +1,4 @@
-import { getMidpointOffsetY } from './dancerHelpers';
+import { getMidpointOffsetY } from './formationHelpers';
 import type {FormationControl, Frame, Point} from './types'
 import { rotatePoint } from './pathHelpers';
 

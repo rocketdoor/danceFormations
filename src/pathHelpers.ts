@@ -38,6 +38,7 @@ export function moveHandles(handles: { startHandle: Point, endHandle: Point }, w
     : { ...handles, endHandle: to }
 }
 
+//maybe add it to a geometry.ts file
 export function rotatePoint(point: Point, center: Point, angle: number): Point {
   const dx = point.x - center.x;
   const dy = point.y - center.y;

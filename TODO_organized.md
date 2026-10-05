@@ -31,6 +31,7 @@ Grouped by when to do it. The original `TODO.md` is untouched.
 - [ ] Revisit button icons (Font Awesome): pick a deliberate, consistent set once the button list settles.
 - [ ] Move inline `style={{...}}` objects (e.g. `buttonStyle`, the panel layouts) into a stylesheet using `className`; clear leftover Vite template rules from `App.css` and `index.css`; use CSS variables for reused colors and sizes (hover/disabled states need this too). Consider CSS Modules once `App.tsx` is split into components.
 - [ ] Replace native `title` tooltips with a custom-styled tooltip (CSS-only: hidden `<span>` shown on `:hover`).
+- [ ] Add a visual toggle to show/hide the next-frame preview and dashed paths generally (not only during playback) — the stage is noticeably cleaner without them when just looking at the current formation. Ties into the existing playback-hide item above.
 
 ## 4. Ongoing: code cleanup
 - [ ] Review `updateCurrentFrameDancers` and `updateDancer` and how they compose, until using them feels instinctive. Practice by re-deriving each call site (drag, rename, handle drag, swap) from scratch.
@@ -57,6 +58,8 @@ Grouped by when to do it. The original `TODO.md` is untouched.
 - [x] Z-order fixed: handles block now renders after `displayedDancers.map(...)`, so handles always draw on top of dancers. (Also caught and fixed a related bug while testing this: an `&&`/`||` precedence mistake was silently hiding circle's own resize-radius handle entirely — needed explicit parentheses around the type check.)
 - [x] Propagated to half-circle (reuses circle's move/resize/rotate directly, since it has its own `radius`) and line (move handle, `resizeX` handle shared with V's, rotate reach via `spacingX! * centerIndex`). All four formation types (circle, V, half-circle, line) now have working live handle controls.
 - [ ] Holding Shift while dragging the rotate handle should snap rotation to 45° increments instead of free rotation.
+- [ ] Add an invisible/large hit-area handle on the formation shape itself (not just the move/resize/rotate handles), so the user can click the formation to reselect/re-activate it without having to click one specific dancer.
+- [ ] Support multiple active formations on the same frame simultaneously (e.g. two circles, several lines at once) — `activeFormation` currently holds at most one; this means it (and the handle-drag state) needs to become a collection, plus a way to tell which dancers belong to which formation.
 
 ### Dancers
 - [ ] Add and remove dancers — currently locked to the 7 hardcoded at startup. Adding needs a fresh id (and probably a default position/label); removing needs to strip that dancer from every frame's `dancers` array, not just the current one, and decide what happens to any `pathToNext` pointing at them.

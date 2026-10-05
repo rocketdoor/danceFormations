@@ -12,14 +12,13 @@ import {
 
 import type { Dancer, FormationControl, Frame } from './types'
 import {
-  updateDancer, swapDancers, cloneDancersToNewFrame, computeFormationDancers,
-  getMidpointOffsetY,
-  getRotateHandleReach
+  updateDancer, swapDancers, cloneDancersToNewFrame
 } from './dancerHelpers'
 import { updateFrame, addFrameAfter, shiftFrames, updateFormationFromDrag } from './frameHelpers'
 import { interpolateFrames, getHandles, moveHandles, rotatePoint } from './pathHelpers'
 import { saveToLocal, loadFromLocal, importFromFile, exportToFile } from './persistence'
 import { svgHeight, svgWidth, spacingX, spacingY, centerX, centerY, radius, standardFrameGap, standardFrameLength, rotateHandleOffset } from './constants'
+import { computeFormationDancers, getMidpointOffsetY, getRotateHandleReach } from './formationHelpers';
 
 function clamp(min: number, max: number, value: number): number {
   return Math.max(min, Math.min(value, max))

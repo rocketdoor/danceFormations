@@ -1,19 +1,57 @@
 /*MY ACTUAL USED CSS THINGS*/
+:root {
+  /* AFTERHOURS: muted, default values*/
+  /*(near-black, cool blue-purple undertone)*/
+  --bg: #12131a;
 
+  /*(panels/cards, one step up from bg)*/
+  --surface: #1a1c26;
+  --border: #2c2f3d;
+  --text: #d8d9e3;
 
-.tool-button{
-  width: 48px;
-  height: 48px
+  /*(secondary text, labels)*/
+  --text-dim: #8b8d9c;
+
+  /*(muted gold — primary actions, selection)*/
+  --accent: #f4b740;
+
+  /*(warm red — destructive, swap-mode, alerts)*/
+  --accent-2: #e8485f;
 }
 
-.button-row{
+:root[data-theme="spotlight"] {
+  /* SPOTLIGHT: warmer, punchier */
+  /*(near-black, more purple than blue)*/
+  --bg: #15121e;
+  --surface: #1e1a2b;
+  --border: #352e47;
+  --text: #ece8f5;
+  --text-dim: #9690a8;
+
+  /*(bright yellow — primary actions, selection)*/
+  --accent: #ffcc33;
+
+  /*(vivid red — destructive, swap-mode, alerts)*/
+  --accent-2: #ff4d4d;
+}
+
+
+.tool-button {
+  width: 48px;
+  height: 48px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid (var(--border))
+}
+
+.button-row {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
   justify-content: center;
 }
 
-.side-panel{
+.side-panel {
   width: 280px;
   height: 100vh;
   display: flex;
@@ -21,11 +59,32 @@
   justify-content: center
 }
 
-.side-spacer{
+.side-spacer {
   width: 280px;
 }
 
-.stage-wrapper{
+.stage-wrapper {
   display: flex;
   flex-direction: row;
+  user-select: none;
+}
+
+.dancer{
+  fill: var(--accent-2)
+}
+
+.dancer-selected{
+  fill:var(--accent);
+}
+
+.dancer-ghost{
+  fill: var(--accent-2);
+  opacity: 0.3
+}
+
+.next-frame-path{
+  fill: none;
+  stroke: var(--text);
+  opacity: 0.5;
+  stroke-dasharray: 6 4;
 }

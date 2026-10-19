@@ -1,6 +1,6 @@
 import { baseAngle } from "./constants";
 import { rotatePoint } from "./pathHelpers";
-import type { Dancer, FormationControl } from "./types";
+import type { Dancer, FormationControl, Point } from "./types";
 
 
 export function applyCircleFormation(dancers: Dancer[], radius: number, centerX: number, centerY: number): Dancer[] {
@@ -109,4 +109,29 @@ export function getRotateHandleReach(formation: FormationControl, centerIndex: n
   }
 
   return 0;
+}
+
+export function updateFormationFromDrag(
+  formation: FormationControl,
+  handle: 'move' | 'resize' | 'resizeX' | 'resizeY' | 'rotate',
+  pointer: Point,
+  centerIndex: number
+): FormationControl {
+  const center = {x: formation.centerX, y: formation.centerY};
+  const localPointer = rotatePoint(pointer, center, -(formation.baseAngle ?? 0));
+
+  if (handle == 'move')
+    return {...formation, centerX: localPointer.x, centerY: localPointer.y + getMidpointOffsetY(formation, centerIndex)}
+
+  if (handle === 'resize')
+    return {...formation, radius: Math.hypot(pointer.x - formation.centerX, pointer.y - formation.centerY)}
+
+  if (handle === 'resizeX')
+    return {...formation, spacingX: centerIndex === 0 ? formation.spacingX! : (localPointer.x - formation.centerX)/centerIndex}
+
+  if (handle === 'resizeY')
+    return {...formation, spacingY: centerIndex === 0 ? formation.spacingY! : (formation.centerY - localPointer.y)/centerIndex}
+
+  const pointerAngle = Math.atan2(pointer.y - formation.centerY, pointer.x - formation.centerX);
+  return{...formation, baseAngle: pointerAngle + Math.PI / 2}
 }

@@ -26,7 +26,8 @@ Grouped by when to do it. The original `TODO.md` is untouched.
 - [ ] Undo/redo
 
 ## 3. After saving/loading: polish (does not change what gets saved)
-- [ ] Clicking empty space on the stage (not a dancer, not a button) while a dancer is selected should deselect it and cancel swap mode. Watch for event bubbling: use `e.stopPropagation()` in the circle handler or check `e.target === e.currentTarget` on the SVG.
+- [ ] Visual identity: committing to a dark theme first ("Afterhours" vs "Spotlight" palettes, toggle button in the left spacer div for comparison), with a light mode planned for later once a dark palette is settled on.
+- [x] Clicking empty space on the stage while a dancer is selected should deselect it and cancel swap mode — resolved as part of the rubber-band selection feature (a near-zero drag is treated as a plain click).
 - [ ] Revisit the Edit and Swap buttons for legibility: make it obvious that after pressing Swap the user must pick a second dancer (visible swap-mode state, a hint, a way to cancel).
 - [ ] Revisit button icons (Font Awesome): pick a deliberate, consistent set once the button list settles.
 - [ ] Move inline `style={{...}}` objects (e.g. `buttonStyle`, the panel layouts) into a stylesheet using `className`; clear leftover Vite template rules from `App.css` and `index.css`; use CSS variables for reused colors and sizes (hover/disabled states need this too). Consider CSS Modules once `App.tsx` is split into components.
@@ -62,10 +63,14 @@ Grouped by when to do it. The original `TODO.md` is untouched.
 - [ ] Support multiple active formations on the same frame simultaneously (e.g. two circles, several lines at once) — `activeFormation` currently holds at most one; this means it (and the handle-drag state) needs to become a collection, plus a way to tell which dancers belong to which formation.
 
 ### Dancers
-- [ ] Add and remove dancers — currently locked to the 7 hardcoded at startup. Adding needs a fresh id (and probably a default position/label); removing needs to strip that dancer from every frame's `dancers` array, not just the current one, and decide what happens to any `pathToNext` pointing at them.
+- [x] Add and remove dancers — `addDancer`/`deleteDancer` in `frameHelpers.ts`, both touching every frame's `dancers` array. New dancer spawns at stage center (`centerX`/`centerY`, now itself derived from `svgWidth`/`svgHeight` instead of separately hardcoded). Confirmed robust: removing a dancer mid-drag or while a formation is active doesn't crash — `centerIndex` and all formation math read `currentFrame.dancers.length` fresh every render, so there's no stale count anywhere to go out of sync.
 
 ### Selection and formations
-- [ ] Multi-select via click-and-drag (rubber-band box): needs `selectedIds`, a drag rectangle, and a "which dancers fall inside" check on pointer-up.
+- [x] `selectedId` → `selectedIds: string[]`. Plain click replaces selection; Shift-click toggles a dancer in/out. Edit requires exactly 1; Swap works both ways — select 1 + click Swap waits for a second click (old flow), or select 2 (via Shift-click) + click Swap swaps them immediately.
+- [x] Decoupled bezier path-handle dragging from selection entirely: `draggedHandle` now carries `{ dancerId, which }`, and the drag-commit logic re-derives the dancer/target/handles fresh from `draggedHandle.dancerId` instead of reading `selectedIds`/`selectedHandles`. Path handles themselves still only render when exactly one dancer is selected (avoids clutter with multi-select).
+  - [ ] Minor inconsistency to clean up: `selectedTarget` never got the same `selectedIds.length === 1` gate `selectedDancer` has — harmless today (render condition short-circuits on `selectedDancer` anyway) but worth matching for clarity.
+- [x] Multi-select via click-and-drag (rubber-band box): `rectangleStartCoordinates`/`rectangleEndCoordinates` state, visible semi-transparent `<rect>` (min/abs math for an arbitrary drag direction), `onPointerUp` filters dancers inside the box into `selectedIds`. A tiny/near-zero drag (below `rectangleThreshold`) is treated as a plain empty-stage click instead — deselects everything and cancels swap mode (closes the long-standing "click empty to deselect" item too). `e.stopPropagation()` added to every grabbable element (dancers, bezier handle, all 5 formation handles) so clicking/dragging them doesn't also start a phantom selection rectangle. `user-select: none` on the stage wrapper to stop the browser's native text-selection behavior from triggering on dancer labels during the drag.
+- [ ] Add a way to move/rotate/manipulate the current multi-selection as one group (not just select it) — the bounding box exists, now needs its own drag handles (move/rotate at least) that reposition every selected dancer together, keeping their relative arrangement.
 - [ ] Apply a formation preset only to the selected dancers, merging results back into the full array.
 - [ ] Make formations adjustable after being applied (move the whole formation, change radius/openness) via a persistent "formation control" with draggable handles.
 

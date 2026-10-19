@@ -1,6 +1,6 @@
 
 import './App.css'
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCircle as faCircleRegular } from '@fortawesome/free-regular-svg-icons';
 import {
@@ -15,7 +15,7 @@ import type { Dancer, FormationControl, Frame, Point } from './types'
 import {
   updateDancer, swapDancers, cloneDancersToNewFrame
 } from './dancerHelpers'
-import { updateFrame, addFrameAfter, shiftFrames, addDancer, deleteDancer } from './frameHelpers'
+import { updateFrame, addFrameAfter, shiftFrames, addDancer, deleteDancer, getCurrentFrame } from './frameHelpers'
 import { interpolateFrames, getHandles, moveHandles, rotatePoint } from './pathHelpers'
 import { saveToLocal, loadFromLocal, importFromFile, exportToFile } from './persistence'
 import {
@@ -26,6 +26,16 @@ import { computeFormationDancers, getMidpointOffsetY, getRotateHandleReach, upda
 
 function clamp(min: number, max: number, value: number): number {
   return Math.max(min, Math.min(value, max))
+}
+
+function timeToX(time: number, totalDuration: number, timelineWidth: number): number {
+  const pixelsPerSecond = timelineWidth / totalDuration;
+  return time * pixelsPerSecond;
+}
+
+function xToTime(x: number, totalDuration: number, timelineWidth: number): number {
+  const secondsPerPixel = totalDuration / timelineWidth;
+  return x * secondsPerPixel;
 }
 
 export default function App() {
@@ -48,17 +58,20 @@ export default function App() {
 
   const [theme, setTheme] = useState<'afterhours' | 'spotlight'>('afterhours');
 
-  const [currentFrameId, setCurrentFrameId] = useState<string>("frame-1");
+  const [currentTime, setCurrentTime] = useState<number>(0);
 
-  const [interpolationTime, setInterpolationTime] = useState<number>(0);
-
-  const currentFrame = frames.find((f) => f.id === currentFrameId)!; // every time after updating currentFrameId, it finds which is the frame, then derives the dancers positions from it
-  const currentFrameIndex = frames.findIndex((f) => f.id === currentFrameId);
+  const currentFrame = getCurrentFrame(frames, currentTime); // every time after updating currentFrameId, it finds which is the frame, then derives the dancers positions from it
+  const currentFrameIndex = frames.findIndex((f) => f.id === currentFrame.id);
   const nextFrameIndex = currentFrameIndex + 1;
   const nextFrame = frames[nextFrameIndex];
   const prevFrame = frames[currentFrameIndex - 1]
 
-  const displayedDancers = nextFrame ? interpolateFrames(currentFrame, nextFrame, interpolationTime) : currentFrame.dancers;
+  let t = 0;
+  if (nextFrame) {
+    const gap = nextFrame.startTime - currentFrame.endTime;
+    t = gap <= 0 ? 1 : clamp(0, 1, (currentTime - currentFrame.endTime) / gap);
+  }
+  const displayedDancers = nextFrame ? interpolateFrames(currentFrame, nextFrame, t) : currentFrame.dancers;
   const [editingDancerId, setEditingDancerId] = useState<string | null>(null);
 
   // variables used to control which dancer is being dragged
@@ -81,8 +94,18 @@ export default function App() {
 
   const svgRef = useRef<SVGSVGElement>(null); // useref gives a box that holds values between re-renders, unlike usestate
 
+  const [timelineWidth, setTimelineWidth] = useState<number>(0);
+  const timelineRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (timelineRef.current) {
+      setTimelineWidth(timelineRef.current.getBoundingClientRect().width);
+    }
+  }, ([]));
+  const [draggingPlayhead, setDraggingPlayhead] = useState<boolean>(false);
 
   const centerIndex = (currentFrame.dancers.length - 1) / 2;
+
+  const totalLength = frames[frames.length - 1].endTime;
 
   const selectedDancer = selectedIds.length === 1 ? currentFrame.dancers.find((d) => d.id === selectedIds[0]) : undefined// returns the dancer object
   const selectedTarget = selectedIds.length === 1 ? nextFrame?.dancers.find((d) => d.id === selectedIds[0]) : undefined;
@@ -123,8 +146,15 @@ export default function App() {
     return { x, y };
   }
 
+  function getTimelineCoords(e: React.PointerEvent<HTMLDivElement>): number {
+    const timeline = timelineRef.current!.getBoundingClientRect();
+    const px = e.clientX - timeline.left;
+    const x = px * (timelineWidth / timeline.width);
+    return x;
+  }
+
   function updateCurrentFrameDancers(newDancers: Dancer[]) {
-    setFrames(updateFrame(frames, currentFrameId, { dancers: newDancers }));
+    setFrames(updateFrame(frames, currentFrame.id, { dancers: newDancers }));
   }
 
   function renameDancer(dancer: Dancer, newLabel: string) {
@@ -154,7 +184,7 @@ export default function App() {
           {theme}
         </button>
 
-        <select onChange={(e) =>{
+        <select onChange={(e) => {
           document.documentElement.style.setProperty('--sans', e.target.value)
         }}>
           <option value="'Space Grotesk'"> Space Grotesk</option>
@@ -402,7 +432,36 @@ export default function App() {
             </rect>
           )}
         </svg>
-
+        <div ref={timelineRef} style={{ backgroundColor: 'blue', height: 50 }} className='timeline'
+          onPointerMove={(e) => {
+            if (draggingPlayhead) {
+              const newTime = clamp(0, totalLength, xToTime(getTimelineCoords(e), totalLength, timelineWidth));
+              setCurrentTime(newTime);
+            }}}
+          onPointerUp={() =>
+          {
+            if(draggingPlayhead){
+              setDraggingPlayhead(false);
+            }
+          }
+          }  
+          >
+          {frames.map((f, i) => (
+            <React.Fragment key={f.id}>
+              <div className='timeline-frame' style={{ left: timeToX(f.startTime, totalLength, timelineWidth), width: timeToX(f.endTime, totalLength, timelineWidth) - timeToX(f.startTime, totalLength, timelineWidth) }}></div>
+              {(frames[i + 1]) && (
+                <div className='timeline-frame' style={{ left: timeToX(f.endTime, totalLength, timelineWidth), width: timeToX(frames[i + 1].startTime, totalLength, timelineWidth) - timeToX(f.endTime, totalLength, timelineWidth) }}></div>
+              )}
+            </React.Fragment>
+          )
+          )}
+          <div className='timeline-playhead' style={{ left: timeToX(currentTime, totalLength, timelineWidth), transform: 'translateX(-50%)'}}
+            onPointerDown={() => {
+              setDraggingPlayhead(true);
+            }}
+          ></div>
+          <h1> {timelineWidth} </h1>
+        </div>
       </div>
 
       {/* BUTTONS */}
@@ -475,7 +534,7 @@ export default function App() {
           <button className='tool-button' title="Add Frame" onClick={() => {
             const newId = crypto.randomUUID();
             const newDancers = cloneDancersToNewFrame(currentFrame.dancers);
-            let framesToInsertInto = updateFrame(frames, currentFrameId, { dancers: newDancers });
+            let framesToInsertInto = updateFrame(frames, currentFrame.id, { dancers: newDancers });
             const nextFrame = frames[currentFrameIndex + 1];
             if (nextFrame) {
               const shortfall = nextFrame.startTime - (currentFrame.endTime + standardFrameLength + standardFrameGap);
@@ -484,15 +543,14 @@ export default function App() {
               }
             }
             setFrames(addFrameAfter(framesToInsertInto, currentFrameIndex, { "id": newId, dancers: newDancers, startTime: currentFrame.endTime + standardFrameGap, endTime: currentFrame.endTime + standardFrameLength + standardFrameGap }));
-            setCurrentFrameId(newId);
+            setCurrentTime(nextFrame.startTime);
           }}>
             <FontAwesomeIcon icon={faPlus} />
 
           </button>
           <button className='tool-button' title="Next Frame" onClick={() => {
-            const nextFrameIndex = currentFrameIndex + 1;
-            if (currentFrameIndex < frames.length - 1) {
-              setCurrentFrameId(frames[nextFrameIndex].id);
+            if (nextFrame) {
+              setCurrentTime(nextFrame.startTime);
             }
           }
           }>
@@ -500,9 +558,9 @@ export default function App() {
 
           </button>
           <button className='tool-button' title="Previous Frame" onClick={() => {
-            const prevFrameIndex = currentFrameIndex - 1;
-            if (currentFrameIndex > 0) {
-              setCurrentFrameId(frames[prevFrameIndex].id);
+
+            if (prevFrame) {
+              setCurrentTime(prevFrame.startTime);
             }
           }
           }>
@@ -542,20 +600,20 @@ export default function App() {
           <input
             type="range"
             min={0}
-            max={1}
+            max={totalLength}
             step={0.01}
-            value={interpolationTime}
-            onChange={(e) => setInterpolationTime(Number(e.target.value))}
+            value={currentTime}
+            onChange={(e) => setCurrentTime(Number(e.target.value))}
           />
-
+          <h3>{currentTime}</h3>
           <input type="number" value={currentFrame.startTime} onChange={(e) => {
             const clamped = clamp(prevFrame?.endTime ?? 0, currentFrame.endTime, Number(e.target.value))
-            setFrames(updateFrame(frames, currentFrameId, { startTime: clamped }))
+            setFrames(updateFrame(frames, currentFrame.id, { startTime: clamped }))
           }}
           />
           <input type="number" value={currentFrame.endTime} onChange={(e) => {
             const clamped = clamp(currentFrame.startTime, nextFrame?.startTime ?? Infinity, Number(e.target.value))
-            setFrames(updateFrame(frames, currentFrameId, { endTime: clamped }))
+            setFrames(updateFrame(frames, currentFrame.id, { endTime: clamped }))
           }} />
 
         </div>

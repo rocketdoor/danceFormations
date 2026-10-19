@@ -27,6 +27,7 @@ Grouped by when to do it. The original `TODO.md` is untouched.
 
 ## 3. After saving/loading: polish (does not change what gets saved)
 - [ ] Visual identity: committing to a dark theme first ("Afterhours" vs "Spotlight" palettes, toggle button in the left spacer div for comparison), with a light mode planned for later once a dark palette is settled on.
+- [ ] Accessibility settings — real user feedback (low vision) found the default text size too small. Consider a font-size scale control, and more broadly a proper accessibility settings panel (contrast, size, maybe motion) rather than one-off fixes.
 - [x] Clicking empty space on the stage while a dancer is selected should deselect it and cancel swap mode — resolved as part of the rubber-band selection feature (a near-zero drag is treated as a plain click).
 - [ ] Revisit the Edit and Swap buttons for legibility: make it obvious that after pressing Swap the user must pick a second dancer (visible swap-mode state, a hint, a way to cancel).
 - [ ] Revisit button icons (Font Awesome): pick a deliberate, consistent set once the button list settles.

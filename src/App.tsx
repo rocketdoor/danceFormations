@@ -153,6 +153,15 @@ export default function App() {
         }}>
           {theme}
         </button>
+
+        <select onChange={(e) =>{
+          document.documentElement.style.setProperty('--sans', e.target.value)
+        }}>
+          <option value="'Space Grotesk'"> Space Grotesk</option>
+          <option value="'Inter Tight'"> Inter Tight</option>
+          <option value="'Bricolage Grotesque'"> Bricolage Grotesque</option>
+          <option value="'Roboto Condensed'"> Roboto Condensed</option>
+        </select>
       </div>
 
       <div className='stage-wrapper'>
@@ -298,7 +307,7 @@ export default function App() {
                 </foreignObject>
               ) : (
                 <text x={dancer.x} y={dancer.y - 15} /* offsets the text 15px up from the center of the dancer */
-                  textAnchor="middle" fontSize={12}
+                  className='dancer-label'
                   onDoubleClick={() => setEditingDancerId(dancer.id)}>
                   {dancer.label}
                 </text>)}

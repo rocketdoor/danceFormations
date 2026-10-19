@@ -8,6 +8,7 @@
   --surface: #1a1c26;
   --border: #2c2f3d;
   --text: #d8d9e3;
+  --text-h: #d8d9e3;
 
   /*(secondary text, labels)*/
   --text-dim: #8b8d9c;
@@ -26,6 +27,7 @@
   --surface: #1e1a2b;
   --border: #352e47;
   --text: #ece8f5;
+  --text-h: #ece8f5;
   --text-dim: #9690a8;
 
   /*(bright yellow — primary actions, selection)*/
@@ -70,11 +72,18 @@
 }
 
 .dancer{
-  fill: var(--accent-2)
+  fill: var(--accent-2);
+  
 }
 
 .dancer-selected{
   fill:var(--accent);
+}
+
+.dancer-label{
+  fill: var(--text);
+  text-anchor: middle;
+  font-size: 12px;
 }
 
 .dancer-ghost{

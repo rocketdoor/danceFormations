@@ -1,4 +1,5 @@
 import { baseAngle } from "./constants";
+import { mergeDancersById } from "./dancerHelpers";
 import { rotatePoint } from "./pathHelpers";
 import type { Dancer, FormationControl, Point } from "./types";
 
@@ -54,33 +55,43 @@ export function applyHalfCircleFormation(dancers: Dancer[], radius: number, cent
 export function computeFormationDancers(dancers: Dancer[], formation: FormationControl): Dancer[]
 {
   let positioned: Dancer[];
+  const targetDancers = dancers.filter((d) => formation.dancerIds.includes(d.id))
 
   if (formation.type === 'circle')
   {
-    positioned = applyCircleFormation(dancers, formation.radius!, formation.centerX, formation.centerY);
+    positioned = applyCircleFormation(targetDancers, formation.radius!, formation.centerX, formation.centerY);
   }
   else if (formation.type === 'vee')
   {
-    positioned = applyVeeFormation(dancers, formation.spacingX!, formation.spacingY!, formation.centerX, formation.centerY);
+    positioned = applyVeeFormation(targetDancers, formation.spacingX!, formation.spacingY!, formation.centerX, formation.centerY);
   }
   else if (formation.type === 'halfCircle')
   {
-    positioned = applyHalfCircleFormation(dancers, formation.radius!, formation.centerX, formation.centerY, baseAngle)
+    positioned = applyHalfCircleFormation(targetDancers, formation.radius!, formation.centerX, formation.centerY, baseAngle)
   }
 
   else if (formation.type === 'line')
   {
-    positioned = applyLineFormation(dancers, formation.spacingX!, formation.centerX - formation.spacingX! * (dancers.length - 1)/2, formation.centerY)
+    positioned = applyLineFormation(targetDancers, formation.spacingX!, formation.centerX - formation.spacingX! * (targetDancers.length - 1)/2, formation.centerY)
+  }
+  else if (formation.type === 'selection'){
+    positioned = targetDancers.map((d) => {
+      const offset = formation.offsets!.find((o) => o.id === d.id)!;
+      return {...d,
+        x: formation.centerX + offset.dx * (formation.scale ?? 1) *(formation.scaleX ?? 1), 
+        y: formation.centerY + offset.dy * (formation.scale ?? 1) *(formation.scaleY ?? 1)}
+    })
   }
   
 
   else {throw new Error(`computeFormationsDancers: unsupported formation type ${formation.type}`)}
 
-  return positioned.map((d) => 
+  const rotated = positioned.map((d) => 
   ({
     ...d,
     ...rotatePoint({x: d.x, y: d.y}, {x: formation.centerX, y: formation.centerY}, formation.baseAngle ?? 0)
-  }))
+  }));
+  return mergeDancersById(dancers, rotated);
 }
 
 export function getMidpointOffsetY(formation: FormationControl, centerIndex: number): number{
@@ -108,12 +119,25 @@ export function getRotateHandleReach(formation: FormationControl, centerIndex: n
     return formation.spacingX! * centerIndex;
   }
 
+  else if (formation.type === 'selection')
+  {
+    let furthestUp = 0
+    const offsets = formation.offsets!.map((o) => {return o.dy})
+    furthestUp = Math.min(...offsets)
+    return -furthestUp
+  }
+
   return 0;
+}
+
+export function getScaleHandleReach(formation: FormationControl): number {
+  const distances = formation.offsets!.map((o) => Math.hypot(o.dx, o.dy))
+  return Math.max(...distances)
 }
 
 export function updateFormationFromDrag(
   formation: FormationControl,
-  handle: 'move' | 'resize' | 'resizeX' | 'resizeY' | 'rotate',
+  handle: 'move' | 'resize' | 'resizeX' | 'resizeY' | 'rotate' | 'scale' | 'scaleX' | 'scaleY',
   pointer: Point,
   centerIndex: number
 ): FormationControl {
@@ -132,6 +156,20 @@ export function updateFormationFromDrag(
   if (handle === 'resizeY')
     return {...formation, spacingY: centerIndex === 0 ? formation.spacingY! : (formation.centerY - localPointer.y)/centerIndex}
 
+  if (handle === 'scale'){
+    const pointerDistance = Math.hypot(pointer.x - formation.centerX, pointer.y - formation.centerY)
+    return {...formation, scale: pointerDistance/getScaleHandleReach(formation)}
+  }
+
+  if (handle === 'scaleX'){
+    const xReach = Math.max(...formation.offsets!.map((o) => o.dx));
+    return {...formation, scaleX: (localPointer.x - formation.centerX)/xReach}
+  }
+
+  if (handle === 'scaleY'){
+    const yReach = -Math.min(...formation.offsets!.map((o) => o.dy));
+    return {...formation, scaleY: (formation.centerY - localPointer.y)/yReach}
+  }
   const pointerAngle = Math.atan2(pointer.y - formation.centerY, pointer.x - formation.centerX);
   return{...formation, baseAngle: pointerAngle + Math.PI / 2}
 }

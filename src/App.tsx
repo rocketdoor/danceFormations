@@ -22,7 +22,7 @@ import {
   svgHeight, svgWidth, spacingX, spacingY, centerX, centerY, radius, standardFrameGap, standardFrameLength, rotateHandleOffset,
   selectBoxColor, selectBoxOpacity, selectBoxStroke, selectBoxStrokeWidth, rectangleThreshold
 } from './constants'
-import { computeFormationDancers, getMidpointOffsetY, getRotateHandleReach, updateFormationFromDrag } from './formationHelpers';
+import { computeFormationDancers, getMidpointOffsetY, getRotateHandleReach, getScaleHandleReach, updateFormationFromDrag } from './formationHelpers';
 
 function clamp(min: number, max: number, value: number): number {
   return Math.max(min, Math.min(value, max))
@@ -85,7 +85,7 @@ export default function App() {
 
   const [draggedHandle, setDraggedHandle] = useState<{ dancerId: string, which: 'start' | 'end' } | null>(null);
 
-  const [draggingFormationHandle, setDraggingFormationHandle] = useState<'move' | 'resize' | 'resizeX' | 'resizeY' | 'rotate' | null>(null);
+  const [draggingFormationHandle, setDraggingFormationHandle] = useState<'move' | 'resize' | 'resizeX' | 'resizeY' | 'rotate' | 'scale' | 'scaleX' | 'scaleY' | null>(null);
 
   const [activeFormation, setActiveFormation] = useState<FormationControl | null>(null);
 
@@ -103,7 +103,7 @@ export default function App() {
   }, ([]));
   const [draggingPlayhead, setDraggingPlayhead] = useState<boolean>(false);
 
-  const centerIndex = (currentFrame.dancers.length - 1) / 2;
+  const centerIndex = activeFormation ? (activeFormation.dancerIds.length - 1) / 2 : (currentFrame.dancers.length - 1) / 2;
 
   const totalLength = frames[frames.length - 1].endTime;
 
@@ -134,8 +134,18 @@ export default function App() {
       { x: activeFormation.centerX, y: activeFormation.centerY },
       activeFormation.baseAngle ?? 0
     ) : null
-
-
+  const scalingHandlePos = activeFormation && activeFormation.type === 'selection' ? rotatePoint
+    ({ x: getScaleHandleReach(activeFormation) * (activeFormation.scale ?? 1) + activeFormation.centerX, y: activeFormation.centerY },
+      { x: activeFormation.centerX, y: activeFormation.centerY },
+      activeFormation.baseAngle ?? 0) : null
+  const scalingXHandlePos = activeFormation && activeFormation.type === 'selection' ? rotatePoint
+    ({ x: Math.max(...activeFormation.offsets!.map((o) => o.dx)) * (activeFormation.scaleX ?? 1) + activeFormation.centerX, y: activeFormation.centerY },
+      { x: activeFormation.centerX, y: activeFormation.centerY },
+      activeFormation.baseAngle ?? 0) : null
+  const scalingYHandlePos = activeFormation && activeFormation.type === 'selection' ? rotatePoint
+    ({x: activeFormation.centerX, y: activeFormation.centerY + Math.min(...activeFormation.offsets!.map((o) => o.dy)) * (activeFormation.scaleY ?? 1) },
+      { x: activeFormation.centerX, y: activeFormation.centerY },
+      activeFormation.baseAngle ?? 0) : null
 
   function getSvgCoords(e: React.PointerEvent<SVGSVGElement>): { x: number, y: number } {
     const rect = svgRef.current!.getBoundingClientRect();
@@ -171,6 +181,23 @@ export default function App() {
 
     setEditingDancerId(null);
   }
+
+  function selectDancers(ids: string[]) {
+    setSelectedIds(ids)
+    if (ids.length != 0) {
+      const dancers = currentFrame.dancers.filter((d) => ids.includes(d.id))
+      let sumX = 0
+      dancers.forEach((d) => sumX = sumX + d.x)
+      const averageX = sumX / dancers.length
+      let sumY = 0
+      dancers.forEach((d) => sumY = sumY + d.y)
+      const averageY = sumY / dancers.length
+      const offsets = dancers.map((d) => { return { id: d.id, dx: d.x - averageX, dy: d.y - averageY } })
+      setActiveFormation({ type: 'selection', centerX: averageX, centerY: averageY, offsets: offsets, dancerIds: dancers.map((d) => { return d.id }) })
+    }
+    else (setActiveFormation(null));
+  }
+
 
   return (
     <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
@@ -252,11 +279,11 @@ export default function App() {
               const height = Math.abs(rectangleStartCoordinates.y - endCoords.y)
               if ((width < rectangleThreshold) || (height < rectangleThreshold)) {
                 setSwapping(false);
-                setSelectedIds([]);
+                selectDancers([]);
               }
               else {
                 const selectedDancers = currentFrame.dancers.filter((d) => (d.x > startX && d.x < endX && d.y > startY && d.y < endY))
-                setSelectedIds(selectedDancers.map((d) => d.id))
+                selectDancers(selectedDancers.map((d) => d.id))
               }
             }
             setRectangleStartCoordinates(null);
@@ -305,7 +332,7 @@ export default function App() {
                   if (swapping && selectedIds != null && dancer.id != selectedIds[0]) {
                     updateCurrentFrameDancers(swapDancers(currentFrame.dancers, selectedIds[0], dancer.id));
                     setSwapping(false);
-                    setSelectedIds([]);
+                    selectDancers([]);
                     return;
                   }
                   setDraggedId(dancer.id);
@@ -320,9 +347,9 @@ export default function App() {
                       updatedIds = [...selectedIds, selectedId]
                     }
 
-                    setSelectedIds(updatedIds)
+                    selectDancers(updatedIds)
                   }
-                  else { setSelectedIds([dancer.id]) }
+                  else { selectDancers([dancer.id]) }
                 }}
               />
               {/* HERE TO EDIT THE DANCER NAME */}
@@ -415,6 +442,33 @@ export default function App() {
                   }} />
 
               )}
+
+              {scalingHandlePos && (
+                <circle cx={scalingHandlePos.x} cy={scalingHandlePos.y} r={6} fill='blue'
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    setDraggingFormationHandle('scale')
+                  }}
+                />
+              )}
+
+              {scalingXHandlePos && (
+                <circle cx={scalingXHandlePos.x} cy={scalingXHandlePos.y} r={6} fill='blue' 
+                onPointerDown={(e) =>{
+                  e.stopPropagation();
+                  setDraggingFormationHandle('scaleX')
+                }}
+                />
+              )}
+
+              {scalingYHandlePos && (
+                <circle cx={scalingYHandlePos.x} cy={scalingYHandlePos.y} r={6} fill='blue' 
+                onPointerDown={(e) =>{
+                  e.stopPropagation();
+                  setDraggingFormationHandle('scaleY')
+                }}
+                />
+              )}
             </React.Fragment>
           )}
 
@@ -437,15 +491,15 @@ export default function App() {
             if (draggingPlayhead) {
               const newTime = clamp(0, totalLength, xToTime(getTimelineCoords(e), totalLength, timelineWidth));
               setCurrentTime(newTime);
-            }}}
-          onPointerUp={() =>
-          {
-            if(draggingPlayhead){
+            }
+          }}
+          onPointerUp={() => {
+            if (draggingPlayhead) {
               setDraggingPlayhead(false);
             }
           }
-          }  
-          >
+          }
+        >
           {frames.map((f, i) => (
             <React.Fragment key={f.id}>
               <div className='timeline-frame' style={{ left: timeToX(f.startTime, totalLength, timelineWidth), width: timeToX(f.endTime, totalLength, timelineWidth) - timeToX(f.startTime, totalLength, timelineWidth) }}></div>
@@ -455,7 +509,7 @@ export default function App() {
             </React.Fragment>
           )
           )}
-          <div className='timeline-playhead' style={{ left: timeToX(currentTime, totalLength, timelineWidth), transform: 'translateX(-50%)'}}
+          <div className='timeline-playhead' style={{ left: timeToX(currentTime, totalLength, timelineWidth), transform: 'translateX(-50%)' }}
             onPointerDown={() => {
               setDraggingPlayhead(true);
             }}
@@ -501,28 +555,44 @@ export default function App() {
         {/* FORMATIONS */}
         <div className='button-row'>
           <button className='tool-button' title="Circle" onClick={() => {
-            const formation: FormationControl = { type: 'circle', centerX, centerY, radius };
+            const formation: FormationControl = {
+              type: 'circle',
+              dancerIds: selectedIds.length > 0 ? selectedIds : currentFrame.dancers.map((d) => d.id),
+              centerX, centerY, radius
+            };
             setActiveFormation(formation);
             updateCurrentFrameDancers(computeFormationDancers(currentFrame.dancers, formation))
           }}>
             <FontAwesomeIcon icon={faCircleRegular} />
           </button>
           <button className='tool-button' title="Line" onClick={() => {
-            const formation: FormationControl = { type: 'line', centerX, centerY, spacingX }
+            const formation: FormationControl = {
+              type: 'line',
+              dancerIds: selectedIds.length > 0 ? selectedIds : currentFrame.dancers.map((d) => d.id),
+              centerX, centerY, spacingX
+            }
             setActiveFormation(formation);
             updateCurrentFrameDancers(computeFormationDancers(currentFrame.dancers, formation))
           }}>
             <FontAwesomeIcon icon={faMinus} />
           </button>
           <button className='tool-button' title="V" onClick={() => {
-            const formation: FormationControl = { type: 'vee', centerX, centerY, spacingX, spacingY };
+            const formation: FormationControl = {
+              type: 'vee',
+              dancerIds: selectedIds.length > 0 ? selectedIds : currentFrame.dancers.map((d) => d.id),
+              centerX, centerY, spacingX, spacingY
+            };
             setActiveFormation(formation);
             updateCurrentFrameDancers(computeFormationDancers(currentFrame.dancers, formation))
           }}>
             <FontAwesomeIcon icon={faChevronDown} />
           </button>
           <button className='tool-button' title="Half-Circle" onClick={() => {
-            const formation: FormationControl = { type: 'halfCircle', centerX, centerY, radius };
+            const formation: FormationControl = {
+              type: 'halfCircle',
+              dancerIds: selectedIds.length > 0 ? selectedIds : currentFrame.dancers.map((d) => d.id),
+              centerX, centerY, radius
+            };
             setActiveFormation(formation);
             updateCurrentFrameDancers(computeFormationDancers(currentFrame.dancers, formation))
           }}>
@@ -588,7 +658,7 @@ export default function App() {
               }
               else {
                 updateCurrentFrameDancers(swapDancers(currentFrame.dancers, selectedIds[0], selectedIds[1]))
-                setSelectedIds([]);
+                selectDancers([]);
               }
             }
             }>

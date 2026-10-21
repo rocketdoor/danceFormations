@@ -19,3 +19,11 @@ export function cloneDancersToNewFrame(dancers: Dancer[]): Dancer[] {
     return { ...d, pathToNext: undefined }
   })
 }
+
+export function mergeDancersById(allDancers: Dancer[], updatedDancers: Dancer[]): Dancer[]
+{
+  return allDancers.map((d) => {
+   const updated = updatedDancers.find((u) => u.id === d.id);
+   return updated ?? d;
+  })
+}

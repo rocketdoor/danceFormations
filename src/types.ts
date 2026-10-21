@@ -28,11 +28,17 @@ export interface Point {
 }
 
 export interface FormationControl{
-  type: 'circle' | 'halfCircle' | 'vee' | 'line';
+  type: 'circle' | 'halfCircle' | 'vee' | 'line' | 'selection';
+  dancerIds: string[];
   centerX: number;
   centerY: number;
-  radius?: number;
-  spacingX?: number;
-  spacingY?: number;
+  radius?: number; // circle and half circle
+  spacingX?: number; // line and v
+  spacingY?: number; // v
   baseAngle?: number;
+  // selection
+  offsets?: {id: string, dx: number, dy: number}[] 
+  scale?: number;
+  scaleX?: number;
+  scaleY?: number;
 }
